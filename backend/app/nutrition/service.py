@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from ..database import get_db, serialize_id, to_object_id
-from .openrouter_client import openrouter_client
+from .gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def run_ai_analysis(log_id: str, child_data: dict, diet_items: list[dict])
     db = get_db()
     logger.info("Starting AI analysis for nutrition log %s", log_id)
     try:
-        analysis = await openrouter_client.analyze_nutrition(
+        analysis = await gemini_client.analyze_nutrition(
             child_name=child_data.get("name"),
             age_months=child_data.get("age_months"),
             weight_kg=child_data.get("weight_kg"),

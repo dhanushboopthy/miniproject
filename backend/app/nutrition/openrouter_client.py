@@ -46,7 +46,10 @@ class OpenRouterClient:
                     "temperature": 0.7,
                 },
             )
-            response.raise_for_status()
+            if response.status_code >= 400:
+                raise RuntimeError(
+                    f"OpenRouter error {response.status_code}: {response.text}"
+                )
             data = response.json()
             content = data["choices"][0]["message"]["content"]
             try:
