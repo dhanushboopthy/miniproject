@@ -75,17 +75,22 @@ async def get_awc_monthly_report(
     # Build child status list
     children_status = []
     for child in children:
-        child_id = str(child.get("_id", ""))
+        child_id = child.get("child_id") or str(child.get("_id", ""))
         measurement = child_latest.get(child_id)
 
         if measurement:
             # Calculate age at measurement
-            child_dob = child.get("date_of_birth")
+            child_dob = child.get("date_of_birth") or child.get("dob")
             measure_date = measurement.get("measurement_date")
             age_months = 0
             if child_dob and measure_date:
+                if isinstance(child_dob, str):
+                    try:
+                        child_dob = datetime.fromisoformat(child_dob)
+                    except ValueError:
+                        child_dob = datetime.strptime(child_dob, "%Y-%m-%d")
                 delta = measure_date - child_dob
-                age_months = delta.days // 30
+                age_months = max(delta.days // 30, 0)
 
             children_status.append(ChildNutritionStatus(
                 child_id=child_id,

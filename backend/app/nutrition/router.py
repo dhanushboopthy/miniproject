@@ -30,13 +30,14 @@ async def log_nutrition(
     latest_measurement = await get_latest_measurement(payload.child_id)
     analysis_queued = False
     if latest_measurement:
+        status = latest_measurement.get("status") or latest_measurement.get("wfh_status")
         child_data = {
             "name": child.get("name"),
             "age_months": latest_measurement["age_months"],
             "weight_kg": latest_measurement["weight_kg"],
             "height_cm": latest_measurement["height_cm"],
             "muac_cm": latest_measurement["muac_cm"],
-            "status": latest_measurement["status"],
+            "status": status,
         }
         background_tasks.add_task(
             run_ai_analysis,

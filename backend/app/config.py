@@ -12,10 +12,6 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_primary_model: str = "anthropic/claude-3-haiku"
     openrouter_fallback_model: str = "meta-llama/llama-3-8b-instruct"
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1"
-    gemini_mock: bool = False
     fast2sms_api_key: str = ""
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587

@@ -1,6 +1,6 @@
-export default function NutritionAnalysisSummary({ analysis }) {
+export default function NutritionAnalysisSummary({ analysis, pending = false }) {
   if (!analysis) {
-    return <p>No nutrition analysis yet.</p>;
+    return <p>{pending ? "Nutrition analysis in progress..." : "No nutrition analysis yet."}</p>;
   }
 
   return (

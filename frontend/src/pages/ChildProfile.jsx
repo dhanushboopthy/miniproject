@@ -13,17 +13,43 @@ export default function ChildProfile() {
   const [chartData, setChartData] = useState([]);
   const [latest, setLatest] = useState(null);
   const [recentNutrition, setRecentNutrition] = useState(null);
+  const [nutritionPending, setNutritionPending] = useState(false);
 
   useEffect(() => {
+    let retries = 0;
+    let timer = null;
+
+    const loadNutrition = async () => {
+      try {
+        const logs = await fetchNutritionHistory(id);
+        const withAnalysis = logs.find((log) => log.ai_analysis);
+        if (withAnalysis) {
+          setRecentNutrition(withAnalysis.ai_analysis);
+          setNutritionPending(false);
+          return;
+        }
+        setRecentNutrition(null);
+        setNutritionPending(logs.length > 0);
+        if (logs.length > 0 && retries < 3) {
+          retries += 1;
+          timer = setTimeout(loadNutrition, 4000);
+        }
+      } catch {
+        setRecentNutrition(null);
+        setNutritionPending(false);
+      }
+    };
+
     api.get(`/children/${id}`).then((res) => setChild(res.data));
     fetchGrowthChart(id).then(setChartData).catch(() => setChartData([]));
     fetchLatestMeasurement(id).then(setLatest).catch(() => setLatest(null));
-    fetchNutritionHistory(id)
-      .then((logs) => {
-        const withAnalysis = logs.find((log) => log.ai_analysis);
-        setRecentNutrition(withAnalysis?.ai_analysis);
-      })
-      .catch(() => setRecentNutrition(null));
+    loadNutrition();
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [id]);
 
   return (
@@ -43,7 +69,7 @@ export default function ChildProfile() {
         </p>
       ) : null}
       <GrowthChart data={chartData} />
-      <NutritionAnalysisSummary analysis={recentNutrition} />
+      <NutritionAnalysisSummary analysis={recentNutrition} pending={nutritionPending} />
     </div>
   );
 }

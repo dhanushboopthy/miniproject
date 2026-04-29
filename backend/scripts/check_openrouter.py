@@ -7,7 +7,7 @@ import sys
 backend_root = Path(__file__).resolve().parents[1]
 sys.path.append(str(backend_root))
 
-from app.nutrition.gemini_client import gemini_client
+from app.nutrition.openrouter_client import openrouter_client
 
 
 def build_sample_diet():
@@ -18,7 +18,7 @@ def build_sample_diet():
 
 
 async def main():
-    analysis = await gemini_client.analyze_nutrition(
+    analysis = await openrouter_client.analyze_nutrition(
         child_name="Test Child",
         age_months=24,
         weight_kg=10.5,

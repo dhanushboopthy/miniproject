@@ -16,6 +16,17 @@ def classify_status(whz: float, muac_cm: float) -> str:
 
 async def add_measurement(data: dict, gender: str, current_user: dict = None, child_info: dict = None) -> dict:
     db = get_db()
+    measurement_date = data.get("measurement_date")
+    if isinstance(measurement_date, str):
+        try:
+            parsed_date = datetime.fromisoformat(measurement_date)
+        except ValueError:
+            parsed_date = datetime.strptime(measurement_date, "%Y-%m-%d")
+        if parsed_date.tzinfo is None:
+            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+        data["measurement_date"] = parsed_date
+    if child_info:
+        data["awc_code"] = child_info.get("awc_code")
     z_scores = calculate_z_scores(
         age_months=data["age_months"],
         weight_kg=data["weight_kg"],
@@ -24,6 +35,7 @@ async def add_measurement(data: dict, gender: str, current_user: dict = None, ch
     )
     data["z_scores"] = z_scores
     data["wfh_status"] = classify_status(z_scores["whz"], data["muac_cm"])
+    data["status"] = data["wfh_status"]
     data["whz"] = z_scores["whz"]  # Store WHZ at top level for alerts
     data["created_at"] = datetime.now(timezone.utc)
     result = await db.growth_records.insert_one(data)
@@ -81,7 +93,7 @@ async def get_chart_data(child_id: str) -> list[dict]:
                 "weight_kg": doc["weight_kg"],
                 "height_cm": doc["height_cm"],
                 "whz": doc["z_scores"]["whz"],
-                "status": doc["status"],
+                "status": doc.get("status") or doc.get("wfh_status"),
             }
         )
     return records
