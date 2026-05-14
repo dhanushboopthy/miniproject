@@ -5,7 +5,6 @@ import GrowthChart from "../components/GrowthChart.jsx";
 import NutritionAnalysisSummary from "../components/NutritionAnalysisSummary.jsx";
 import { fetchGrowthChart, fetchLatestMeasurement } from "../api/growthApi.js";
 import { fetchNutritionHistory } from "../api/nutritionApi.js";
-import { alertsApi } from "../api/alertsApi.js";
 import api from "../api/axiosClient.js";
 
 const STATUS_STYLE = {
@@ -43,28 +42,6 @@ function InfoRow({ label, value }) {
   );
 }
 
-function AlertSeverityDot({ severity }) {
-  const colors = {
-    critical: "#dc2626",
-    high: "#f97316",
-    medium: "#eab308",
-    low: "#22c55e",
-  };
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: "10px",
-        height: "10px",
-        borderRadius: "50%",
-        backgroundColor: colors[severity] || "#6b7280",
-        marginRight: "6px",
-        flexShrink: 0,
-      }}
-    />
-  );
-}
-
 export default function ChildProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -74,8 +51,6 @@ export default function ChildProfile() {
   const [latest, setLatest] = useState(null);
   const [recentNutrition, setRecentNutrition] = useState(null);
   const [nutritionPending, setNutritionPending] = useState(false);
-  const [alerts, setAlerts] = useState([]);
-  const [alertsLoading, setAlertsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -111,12 +86,6 @@ export default function ChildProfile() {
     fetchGrowthChart(id).then(setChartData).catch(() => setChartData([]));
     fetchLatestMeasurement(id).then(setLatest).catch(() => setLatest(null));
     loadNutrition();
-
-    alertsApi
-      .getChildAlerts(id)
-      .then((res) => setAlerts(res.data))
-      .catch(() => setAlerts([]))
-      .finally(() => setAlertsLoading(false));
 
     return () => {
       if (timer) clearTimeout(timer);

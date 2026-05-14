@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/useAuth';
-import { alertsApi, reportsApi } from '../api/alertsApi';
+import { reportsApi } from '../api/alertsApi';
 import { useNavigate } from 'react-router-dom';
 
 function StatCard({ label, value, subtext, bg, borderColor, textColor, onClick }) {
@@ -57,7 +57,6 @@ function QuickActionCard({ icon, title, description, bg, border, textColor, onCl
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeAlertCount, setActiveAlertCount] = useState(0);
   const [monthlyReport, setMonthlyReport] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -70,25 +69,14 @@ export default function Dashboard() {
 
     const fetchAll = async () => {
       try {
-        const [alertRes, reportRes] = await Promise.allSettled([
-          alertsApi.getActiveCount(),
-          reportsApi.getAWCReport(user.awc_code, year, month),
-        ]);
-
-        if (alertRes.status === 'fulfilled') {
-          setActiveAlertCount(alertRes.value.data.active_alerts);
-        }
-        if (reportRes.status === 'fulfilled') {
-          setMonthlyReport(reportRes.value.data);
-        }
+        const reportRes = await reportsApi.getAWCReport(user.awc_code, year, month).catch(() => null);
+        if (reportRes) setMonthlyReport(reportRes.data);
       } finally {
         setStatsLoading(false);
       }
     };
 
     fetchAll();
-    const interval = setInterval(() => alertsApi.getActiveCount().then((r) => setActiveAlertCount(r.data.active_alerts)).catch(() => {}), 30000);
-    return () => clearInterval(interval);
   }, [user]);
 
   const getWelcomeMessage = () => {
@@ -108,32 +96,6 @@ export default function Dashboard() {
       <p style={{ margin: '0 0 28px 0', color: '#6b7280', fontSize: '14px' }}>
         {user?.awc_code} · {user?.role}
       </p>
-
-      {/* Alert Banner */}
-      {activeAlertCount > 0 && (
-        <div
-          onClick={() => navigate('/alerts')}
-          style={{
-            padding: '14px 20px',
-            backgroundColor: '#fee2e2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <h3 style={{ margin: '0 0 2px 0', color: '#991b1b', fontSize: '16px', fontWeight: '700' }}>
-              🚨 {activeAlertCount} Active Alert{activeAlertCount !== 1 ? 's' : ''} Require Attention
-            </h3>
-            <p style={{ margin: 0, color: '#7f1d1d', fontSize: '13px' }}>Click to view and resolve</p>
-          </div>
-          <span style={{ fontSize: '20px', color: '#991b1b' }}>→</span>
-        </div>
-      )}
 
       {/* Monthly Stats */}
       <div style={{ marginBottom: '32px' }}>
@@ -189,15 +151,6 @@ export default function Dashboard() {
               borderColor="#86efac"
               textColor="#16a34a"
             />
-            <StatCard
-              label="Active Alerts"
-              value={activeAlertCount}
-              subtext="unresolved"
-              bg={activeAlertCount > 0 ? "#fee2e2" : "#f9fafb"}
-              borderColor={activeAlertCount > 0 ? "#fca5a5" : "#e5e7eb"}
-              textColor={activeAlertCount > 0 ? "#dc2626" : "#6b7280"}
-              onClick={() => navigate('/alerts')}
-            />
           </div>
         ) : (
           <div style={{ padding: '24px', backgroundColor: '#f9fafb', borderRadius: '8px', color: '#9ca3af', textAlign: 'center', fontSize: '14px' }}>
@@ -213,7 +166,6 @@ export default function Dashboard() {
         <QuickActionCard icon="➕" title="Register Child" description="Enroll a new child" bg="#f0fdf4" border="#bbf7d0" textColor="#15803d" onClick={() => navigate('/children/new')} />
         <QuickActionCard icon="⚖️" title="Log Measurement" description="Record weight & height" bg="#fef3c7" border="#fde68a" textColor="#92400e" onClick={() => navigate('/growth/new')} />
         <QuickActionCard icon="🍎" title="Log Diet" description="Record food intake" bg="#fce7f3" border="#fbcfe8" textColor="#831843" onClick={() => navigate('/nutrition/log')} />
-        <QuickActionCard icon="🚨" title="View Alerts" description={activeAlertCount > 0 ? `${activeAlertCount} active` : 'No active alerts'} bg="#fee2e2" border="#fecaca" textColor="#991b1b" onClick={() => navigate('/alerts')} />
         <QuickActionCard icon="📊" title="Reports" description="Monthly analytics" bg="#e0e7ff" border="#c7d2fe" textColor="#312e81" onClick={() => navigate('/reports')} />
       </div>
 
@@ -222,7 +174,7 @@ export default function Dashboard() {
         <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600' }}>System Information</h3>
         <ul style={{ margin: 0, paddingLeft: '20px', color: '#6b7280', fontSize: '14px' }}>
           <li style={{ marginBottom: '6px' }}>Role: <strong>{user?.role || 'Worker'}</strong> · AWC: <strong>{user?.awc_code || 'N/A'}</strong></li>
-          <li>The system auto-detects SAM/MAM cases and sends alerts. Log measurements regularly to keep data current.</li>
+          <li>Log measurements regularly to keep data current.</li>
         </ul>
       </div>
     </div>

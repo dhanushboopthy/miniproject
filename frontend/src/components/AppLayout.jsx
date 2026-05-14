@@ -16,7 +16,6 @@ export default function AppLayout({ children }) {
     { to: "/children", label: "Children" },
     { to: "/growth/new", label: "Measurements" },
     { to: "/nutrition/log", label: "Nutrition" },
-    { to: "/alerts", label: "Alerts" },
     { to: "/reports", label: "Reports" },
     ...(user?.role === "admin" ? [{ to: "/admin", label: "Admin" }] : []),
   ];

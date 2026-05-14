@@ -11,7 +11,6 @@ import ChildProfile from "./pages/ChildProfile.jsx";
 import LogMeasurement from "./pages/LogMeasurement.jsx";
 import LogDiet from "./pages/LogDiet.jsx";
 import MealPlan from "./pages/MealPlan.jsx";
-import AlertsDashboard from "./pages/AlertsDashboard.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import OfflineStatusIndicator from "./components/OfflineStatusIndicator.jsx";
@@ -89,16 +88,6 @@ export default function App() {
           <ProtectedRoute>
             <AppLayout>
               <MealPlan />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/alerts"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <AlertsDashboard />
             </AppLayout>
           </ProtectedRoute>
         }
