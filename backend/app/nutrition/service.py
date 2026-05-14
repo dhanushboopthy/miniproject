@@ -31,6 +31,19 @@ async def list_nutrition_logs(child_id: str) -> list[dict]:
     return logs
 
 
+async def ask_nutrition_question(log_id: str, child_data: dict, question: str) -> str:
+    log = await get_nutrition_log(log_id)
+    analysis_summary = ""
+    if log and log.get("ai_analysis"):
+        analysis_summary = log["ai_analysis"].get("summary", "")
+    return await openrouter_client.ask_question(
+        child_name=child_data.get("name", ""),
+        age_months=child_data.get("age_months", 0),
+        analysis_summary=analysis_summary,
+        question=question,
+    )
+
+
 async def run_ai_analysis(log_id: str, child_data: dict, diet_items: list[dict]) -> None:
     db = get_db()
     logger.info("Starting AI analysis for nutrition log %s", log_id)

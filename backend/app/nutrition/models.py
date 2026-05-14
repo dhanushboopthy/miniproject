@@ -13,6 +13,12 @@ class NutritionLogIn(BaseModel):
     food_items: list[FoodItem]
 
 
+class NutritionAskIn(BaseModel):
+    log_id: str
+    child_id: str
+    question: str
+
+
 class AIAnalysis(BaseModel):
     deficiencies: list[dict]
     meal_plan: list[dict] | None = None
@@ -20,6 +26,8 @@ class AIAnalysis(BaseModel):
     referral_reason: Optional[str] = None
     summary: str
     model_used: str
+    score: Optional[int] = None
+    caloric_adequacy_pct: Optional[int] = None
 
 
 class NutritionLogOut(BaseModel):

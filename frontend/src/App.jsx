@@ -13,6 +13,7 @@ import LogDiet from "./pages/LogDiet.jsx";
 import MealPlan from "./pages/MealPlan.jsx";
 import AlertsDashboard from "./pages/AlertsDashboard.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 import OfflineStatusIndicator from "./components/OfflineStatusIndicator.jsx";
 
 export default function App() {
@@ -108,6 +109,16 @@ export default function App() {
           <ProtectedRoute>
             <AppLayout>
               <ReportsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <AdminPage />
             </AppLayout>
           </ProtectedRoute>
         }

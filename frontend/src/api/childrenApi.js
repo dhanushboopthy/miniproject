@@ -5,6 +5,11 @@ export async function listChildren() {
   return response.data;
 }
 
+export async function listChildrenWithStatus() {
+  const response = await api.get("/children/with-status");
+  return response.data;
+}
+
 export async function createChild(payload) {
   const response = await api.post("/children/", payload);
   return response.data;

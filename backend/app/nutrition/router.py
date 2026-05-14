@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
-from .models import NutritionLogIn
-from .service import create_nutrition_log, list_nutrition_logs, run_ai_analysis
+from .models import NutritionLogIn, NutritionAskIn
+from .service import create_nutrition_log, get_nutrition_log, list_nutrition_logs, run_ai_analysis, ask_nutrition_question
 from ..auth.dependencies import get_current_user, require_awc_access
 from ..children.service import get_child_by_child_id
 from ..growth.service import get_latest_measurement
@@ -55,7 +55,30 @@ async def log_nutrition(
             "Please add a measurement and submit another diet log."
         )
 
-    return {"message": message, "log_id": log["id"]}
+    return {"message": message, "log_id": log["id"], "analysis_queued": analysis_queued}
+
+
+@router.get("/log/{log_id}")
+async def get_nutrition_log_detail(log_id: str, user=Depends(get_current_user)):
+    log = await get_nutrition_log(log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return log
+
+
+@router.post("/ask")
+async def ask_nutrition(payload: NutritionAskIn, user=Depends(get_current_user)):
+    child = await get_child_by_child_id(payload.child_id)
+    if not child:
+        raise HTTPException(status_code=404, detail="Child not found")
+
+    latest_measurement = await get_latest_measurement(payload.child_id)
+    child_data = {
+        "name": child.get("name", ""),
+        "age_months": latest_measurement["age_months"] if latest_measurement else 0,
+    }
+    answer = await ask_nutrition_question(payload.log_id, child_data, payload.question)
+    return {"answer": answer}
 
 
 @router.get("/{child_id}/history")

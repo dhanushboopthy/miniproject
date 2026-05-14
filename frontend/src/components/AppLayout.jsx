@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../auth/useAuth.js";
 
 export default function AppLayout({ children }) {
@@ -11,6 +11,16 @@ export default function AppLayout({ children }) {
     navigate("/login");
   };
 
+  const navLinks = [
+    { to: "/", label: "Dashboard", end: true },
+    { to: "/children", label: "Children" },
+    { to: "/growth/new", label: "Measurements" },
+    { to: "/nutrition/log", label: "Nutrition" },
+    { to: "/alerts", label: "Alerts" },
+    { to: "/reports", label: "Reports" },
+    ...(user?.role === "admin" ? [{ to: "/admin", label: "Admin" }] : []),
+  ];
+
   return (
     <div className="app-shell">
       <header className="app-topbar">
@@ -20,24 +30,16 @@ export default function AppLayout({ children }) {
             Anganwadi Health
           </div>
           <nav className="nav-links">
-            <Link className="nav-link" to="/">
-              Dashboard
-            </Link>
-            <Link className="nav-link" to="/children">
-              Children
-            </Link>
-            <Link className="nav-link" to="/growth/new">
-              Measurements
-            </Link>
-            <Link className="nav-link" to="/nutrition/log">
-              Nutrition
-            </Link>
-            <Link className="nav-link" to="/alerts">
-              Alerts
-            </Link>
-            <Link className="nav-link" to="/reports">
-              Reports
-            </Link>
+            {navLinks.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                className={({ isActive }) => `nav-link${isActive ? " nav-link-active" : ""}`}
+                to={to}
+                end={end}
+              >
+                {label}
+              </NavLink>
+            ))}
           </nav>
           <div className="topbar-user">
             <span className="user-pill">

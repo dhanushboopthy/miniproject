@@ -33,3 +33,30 @@ async def get_child_by_child_id(child_id: str) -> dict | None:
     db = get_db()
     doc = await db.children.find_one({"child_id": child_id.strip()})
     return serialize_id(doc) if doc else None
+
+
+async def list_children_with_status(filter_query: dict) -> list[dict]:
+    """Return children list enriched with latest growth status."""
+    db = get_db()
+    children = []
+    async for doc in db.children.find(filter_query):
+        child = serialize_id(doc)
+        child_id = child.get("child_id", "")
+        latest = await db.growth_records.find_one(
+            {"child_id": child_id},
+            sort=[("measurement_date", -1)],
+        )
+        if latest:
+            child["latest_status"] = latest.get("wfh_status")
+            child["latest_weight_kg"] = latest.get("weight_kg")
+            child["latest_measurement_date"] = (
+                latest["measurement_date"].isoformat()
+                if hasattr(latest.get("measurement_date"), "isoformat")
+                else latest.get("measurement_date")
+            )
+        else:
+            child["latest_status"] = None
+            child["latest_weight_kg"] = None
+            child["latest_measurement_date"] = None
+        children.append(child)
+    return children

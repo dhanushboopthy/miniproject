@@ -1,6 +1,5 @@
 import asyncio
 import json
-from typing import Optional
 import httpx
 
 from ..config import settings
@@ -13,6 +12,37 @@ class OpenRouterClient:
         self.primary_model = settings.openrouter_primary_model
         self.fallback_model = settings.openrouter_fallback_model
 
+    def _headers(self) -> dict:
+        if not self.api_key:
+            raise RuntimeError("OPENROUTER_API_KEY is not configured")
+        return {"Authorization": f"Bearer {self.api_key}"}
+
+    async def _chat(self, prompt: str, model: str) -> str:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers=self._headers(),
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                },
+            )
+            if response.status_code >= 400:
+                raise RuntimeError(f"OpenRouter error {response.status_code}: {response.text}")
+            return response.json()["choices"][0]["message"]["content"]
+
+    async def _with_fallback(self, prompt: str) -> tuple[str, str]:
+        """Returns (content, model_used)."""
+        for attempt, model in enumerate([self.primary_model, self.fallback_model]):
+            try:
+                content = await self._chat(prompt, model)
+                return content, model
+            except Exception:
+                if attempt == 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+
     async def analyze_nutrition(
         self,
         child_name: str,
@@ -23,43 +53,46 @@ class OpenRouterClient:
         status: str,
         diet_log: list[dict],
     ) -> dict:
-        prompt = self._build_prompt(
+        prompt = self._build_analysis_prompt(
             child_name, age_months, weight_kg, height_cm, muac_cm, status, diet_log
         )
-        
-        for attempt, model in enumerate([self.primary_model, self.fallback_model]):
-            try:
-                return await self._call_openrouter(prompt, model)
-            except Exception as e:
-                if attempt == 1:
-                    raise
-                await asyncio.sleep(2 ** attempt)
+        content, model = await self._with_fallback(prompt)
+        # Strip markdown fences if present
+        clean = content.strip()
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+            clean = clean.strip()
+        try:
+            analysis = json.loads(clean)
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON from AI: {content}")
+        analysis["model_used"] = model
+        return analysis
 
-    async def _call_openrouter(self, prompt: str, model: str) -> dict:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
-                },
-            )
-            if response.status_code >= 400:
-                raise RuntimeError(
-                    f"OpenRouter error {response.status_code}: {response.text}"
-                )
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            try:
-                analysis = json.loads(content)
-                analysis["model_used"] = model
-                return analysis
-            except json.JSONDecodeError:
-                raise ValueError(f"Invalid JSON from AI: {content}")
+    async def ask_question(
+        self,
+        child_name: str,
+        age_months: int,
+        analysis_summary: str,
+        question: str,
+    ) -> str:
+        age_years = age_months // 12
+        age_str = f"{age_months} months" if age_years == 0 else f"{age_years} year{'s' if age_years > 1 else ''} {age_months % 12} months"
+        context = f"Recent AI nutrition analysis: {analysis_summary}" if analysis_summary else "No prior nutrition analysis available."
+        prompt = f"""You are a pediatric nutritionist supporting Anganwadi workers in Tamil Nadu, India under the ICDS programme.
 
-    def _build_prompt(
+Child: {child_name}, {age_str} old.
+{context}
+
+Worker's question: {question}
+
+Answer in 2-3 practical sentences. Recommend locally available Tamil Nadu foods (ragi, moringa, horsegram, sesame, tamarind, drumstick, etc.) and follow ICDS guidelines. Be direct and actionable."""
+        content, _ = await self._with_fallback(prompt)
+        return content.strip()
+
+    def _build_analysis_prompt(
         self,
         child_name: str,
         age_months: int,
@@ -70,7 +103,9 @@ class OpenRouterClient:
         diet_log: list[dict],
     ) -> str:
         age_years = age_months // 12
-        diet_str = "\n".join([f"- {item['name']}: {item['quantity_g']}g" for item in diet_log])
+        diet_str = "\n".join(
+            [f"- {item['name']}: {item.get('quantity_g', 0)}g" for item in diet_log]
+        )
         return f"""You are a pediatric nutritionist supporting ICDS (Integrated Child Development Services) workers in Tamil Nadu, India.
 
 Child Profile:
@@ -79,17 +114,19 @@ Child Profile:
 - Weight: {weight_kg} kg | Height: {height_cm} cm
 - MUAC: {muac_cm} cm
 - Current Growth Status: {status}
-- Last 7 days diet log:
+- Diet logged today:
 {diet_str}
 - Region: Tamil Nadu, India
 
 Tasks:
 1. Identify the top 3 nutrient deficiencies with severity (mild/moderate/severe)
 2. For each deficiency, suggest 3 locally available, affordable Tamil Nadu foods
-3. Generate a 7-day meal plan using ICDS supplementary nutrition guidelines (consider foods like ragi, moringa, horsegram, tamarind, sesame, drumstick)
+3. Generate a 7-day meal plan using ICDS supplementary nutrition guidelines (ragi, moringa, horsegram, tamarind, sesame, drumstick)
 4. Flag if child needs immediate medical referral (true/false with reason)
+5. Score the overall diet quality from 0 to 10
+6. Estimate caloric adequacy as a percentage of daily age-appropriate requirements
 
-Respond ONLY in the following JSON format with no additional text:
+Respond ONLY in the following JSON format with no additional text or markdown:
 {{
   "deficiencies": [
     {{ "nutrient": "Iron", "severity": "moderate", "foods": ["Moringa leaves", "Sesame seeds", "Horsegram"] }}
@@ -99,7 +136,9 @@ Respond ONLY in the following JSON format with no additional text:
   ],
   "referral_needed": false,
   "referral_reason": null,
-  "summary": "Brief 2-sentence summary for the Anganwadi worker"
+  "summary": "Brief 2-sentence summary for the Anganwadi worker",
+  "score": 6,
+  "caloric_adequacy_pct": 75
 }}
 """
 

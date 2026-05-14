@@ -1,9 +1,28 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createChild } from "../api/childrenApi.js";
 import { useAuthStore } from "../auth/useAuth.js";
 
+const fieldStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1px solid #d1d5db",
+  borderRadius: "6px",
+  fontSize: "14px",
+  boxSizing: "border-box",
+};
+
+const labelStyle = {
+  display: "block",
+  marginBottom: "6px",
+  fontWeight: "600",
+  fontSize: "14px",
+  color: "#374151",
+};
+
 export default function RegisterChild() {
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     dob: "",
@@ -12,7 +31,8 @@ export default function RegisterChild() {
     parent_name: "",
     parent_contact: "",
   });
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState({ text: "", type: "" });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user?.awc_code) {
@@ -26,50 +46,176 @@ export default function RegisterChild() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setMessage("");
+    setMessage({ text: "", type: "" });
+    setLoading(true);
     try {
       const created = await createChild(form);
-      setMessage(`Registered ${created.name} (${created.child_id})`);
+      setMessage({ text: `✅ Registered ${created.name} (${created.child_id}) successfully.`, type: "success" });
+      setForm({
+        name: "",
+        dob: "",
+        gender: "female",
+        awc_code: user?.awc_code || "",
+        parent_name: "",
+        parent_contact: "",
+      });
     } catch (err) {
-      setMessage(err.response?.data?.detail || "Registration failed.");
+      setMessage({ text: err.response?.data?.detail || "Registration failed. Please try again.", type: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="page">
-      <h1>Register Child</h1>
-      <form className="card form-stack" onSubmit={handleSubmit}>
-        <input placeholder="Name" value={form.name} onChange={update("name")} />
-        <input
-          placeholder="DOB"
-          type="date"
-          value={form.dob}
-          onChange={update("dob")}
-        />
-        <input
-          placeholder="Gender"
-          value={form.gender}
-          onChange={update("gender")}
-        />
-        <input
-          placeholder="AWC Code"
-          value={form.awc_code}
-          onChange={update("awc_code")}
-          readOnly={user?.role === "worker"}
-        />
-        <input
-          placeholder="Parent Name"
-          value={form.parent_name}
-          onChange={update("parent_name")}
-        />
-        <input
-          placeholder="Parent Contact"
-          value={form.parent_contact}
-          onChange={update("parent_contact")}
-        />
-        <button type="submit">Register</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <div>
+          <button
+            onClick={() => navigate("/children")}
+            style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: "14px", padding: "0 0 8px 0" }}
+          >
+            ← Back to Children
+          </button>
+          <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "700" }}>Register Child</h1>
+          <p style={{ margin: "4px 0 0 0", color: "#6b7280", fontSize: "14px" }}>Enroll a new child into the AWC</p>
+        </div>
+      </div>
+
+      {message.text && (
+        <div
+          style={{
+            padding: "12px 16px",
+            marginBottom: "20px",
+            borderRadius: "6px",
+            backgroundColor: message.type === "success" ? "#dcfce7" : "#fee2e2",
+            color: message.type === "success" ? "#166534" : "#991b1b",
+            borderLeft: `4px solid ${message.type === "success" ? "#22c55e" : "#dc2626"}`,
+            fontSize: "14px",
+          }}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <form
+        className="card form-stack"
+        onSubmit={handleSubmit}
+        style={{ maxWidth: "600px" }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div>
+            <label style={labelStyle}>Full Name *</label>
+            <input
+              style={fieldStyle}
+              placeholder="e.g., Kavya Lakshmi"
+              value={form.name}
+              onChange={update("name")}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Date of Birth *</label>
+            <input
+              style={fieldStyle}
+              type="date"
+              value={form.dob}
+              onChange={update("dob")}
+              required
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div>
+            <label style={labelStyle}>Gender *</label>
+            <select
+              style={fieldStyle}
+              value={form.gender}
+              onChange={update("gender")}
+              required
+            >
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>AWC Code *</label>
+            <input
+              style={{
+                ...fieldStyle,
+                backgroundColor: user?.role === "worker" ? "#f9fafb" : "white",
+                color: user?.role === "worker" ? "#6b7280" : "#111827",
+              }}
+              placeholder="e.g., TN-CBE-01-007"
+              value={form.awc_code}
+              onChange={update("awc_code")}
+              readOnly={user?.role === "worker"}
+              required
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div>
+            <label style={labelStyle}>Parent / Guardian Name *</label>
+            <input
+              style={fieldStyle}
+              placeholder="e.g., Lakshmi Devi"
+              value={form.parent_name}
+              onChange={update("parent_name")}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Parent Contact Number *</label>
+            <input
+              style={fieldStyle}
+              placeholder="10-digit mobile number"
+              value={form.parent_contact}
+              onChange={update("parent_contact")}
+              pattern="[0-9]{10}"
+              title="Enter a 10-digit mobile number"
+              required
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: "12px",
+              backgroundColor: loading ? "#9ca3af" : "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontWeight: "600",
+              fontSize: "15px",
+            }}
+          >
+            {loading ? "Registering..." : "Register Child"}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/children")}
+            style={{
+              padding: "12px 20px",
+              backgroundColor: "white",
+              color: "#374151",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "15px",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </form>
-      {message ? <p>{message}</p> : null}
     </div>
   );
 }

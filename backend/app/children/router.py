@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from .models import ChildCreate
-from .service import create_child, list_children, get_child_by_child_id
+from .service import create_child, list_children, get_child_by_child_id, list_children_with_status
 from ..auth.dependencies import get_current_user, require_awc_access
 
 
@@ -16,6 +16,16 @@ async def get_children(awc_code: str | None = None, user=Depends(get_current_use
     elif awc_code:
         filter_query["awc_code"] = awc_code
     return await list_children(filter_query)
+
+
+@router.get("/with-status")
+async def get_children_with_status(awc_code: str | None = None, user=Depends(get_current_user)):
+    filter_query = {}
+    if user.get("role") == "worker":
+        filter_query["awc_code"] = user.get("awc_code")
+    elif awc_code:
+        filter_query["awc_code"] = awc_code
+    return await list_children_with_status(filter_query)
 
 
 @router.post("/")
