@@ -67,8 +67,8 @@ services:
       args:
         VITE_API_BASE_URL: http://localhost:8000
     container_name: anganwadi-frontend
-    ports:
-      - "5173:5173"
+    expose:
+      - "5173"
     depends_on:
       - backend
     volumes:
@@ -78,6 +78,21 @@ services:
       - anganwadi-network
     environment:
       VITE_API_BASE_URL: http://localhost:8000
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: anganwadi-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - anganwadi-network
     restart: unless-stopped
 
 volumes:
